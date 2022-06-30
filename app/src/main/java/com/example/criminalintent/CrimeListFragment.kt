@@ -1,22 +1,33 @@
 package com.example.criminalintent
 
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import java.text.SimpleDateFormat
+
 
 
 private const val TAG = "CrimeListFragment"
+private const val TYPE_ITEM_WITHOUT_POLICE_BUTTON = 0
+private const val TYPE_ITEM_WITH_POLICE_BUTTON = 1
+
 
 class CrimeListFragment : Fragment() {
     private var   adapter: CrimeAdapter? = null
     private lateinit var crimeRecyclerView: RecyclerView
+    @RequiresApi(Build.VERSION_CODES.O)
+    var formatter = SimpleDateFormat("EEEE, MMMM dd, yyyy")
+
 
 
     private val crimeListViewModel: CrimeListViewModel by lazy {
@@ -53,15 +64,47 @@ class CrimeListFragment : Fragment() {
         }
     }
 
-    private inner class CrimeHolder(view: View) : RecyclerView.ViewHolder(view) {
+    private inner class CrimeHolder(view: View) : RecyclerView.ViewHolder(view), View.OnClickListener {
+
+        private lateinit var crime: Crime
+
+        init {
+            itemView.setOnClickListener(this)
+        }
+
         val titleTextView: TextView = itemView.findViewById(R.id.crime_title)
         val dateTextView: TextView = itemView.findViewById(R.id.crime_date)
+
+        @RequiresApi(Build.VERSION_CODES.O)
+        fun bind (crime : Crime){
+            this.crime = crime
+            titleTextView.text = this.crime.title.toString()
+            dateTextView.text = formatter.format(this.crime.date).toString()
+        }
+
+        override fun onClick(v: View) {
+            Toast.makeText(context, "${crime.title} pressed!"
+                , Toast.LENGTH_SHORT)
+                .show()
+        }
     }
     private inner class CrimeAdapter(var crimes : List<Crime>) : RecyclerView.Adapter<CrimeHolder>(){
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CrimeHolder {
-         val view = layoutInflater.inflate(R.layout.list_item_crime,parent,false)
-            return CrimeHolder(view)
+            var view : View
+            if (viewType == TYPE_ITEM_WITHOUT_POLICE_BUTTON) {
+                view = layoutInflater.inflate(R.layout.list_item_crime, parent, false)
+                return CrimeHolder(view)
+            }
+            else {
+                view = layoutInflater.inflate(R.layout.list_item_crime_policy, parent, false)
+                return CrimeHolder(view)
+                }
+        }
+
+        override fun getItemViewType(position: Int): Int {
+            return if (crimes[position].requiresPolice) TYPE_ITEM_WITH_POLICE_BUTTON
+            else TYPE_ITEM_WITHOUT_POLICE_BUTTON
         }
 
         override fun getItemCount() = crimes.size
@@ -69,10 +112,7 @@ class CrimeListFragment : Fragment() {
 
         override fun onBindViewHolder(holder: CrimeHolder, position: Int) {
             val crime = crimes[position]
-            holder.apply {
-                titleTextView.text = crime.title
-                dateTextView.text = crime.date.toString()
-            }
+            holder.bind(crime)
         }
 
     }
