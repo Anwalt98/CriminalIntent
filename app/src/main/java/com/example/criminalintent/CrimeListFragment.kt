@@ -10,11 +10,12 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.text.SimpleDateFormat
-
+import java.util.*
 
 
 private const val TAG = "CrimeListFragment"
@@ -23,7 +24,7 @@ private const val TYPE_ITEM_WITH_POLICE_BUTTON = 1
 
 
 class CrimeListFragment : Fragment() {
-    private var   adapter: CrimeAdapter? = null
+    private var adapter: CrimeAdapter? = CrimeAdapter(emptyList())
     private lateinit var crimeRecyclerView: RecyclerView
     @RequiresApi(Build.VERSION_CODES.O)
     var formatter = SimpleDateFormat("EEEE, MMMM dd, yyyy")
@@ -34,10 +35,7 @@ class CrimeListFragment : Fragment() {
         ViewModelProvider(this).get(CrimeListViewModel::class.java)
 
     }
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        Log.d(TAG, "Total crimes:${crimeListViewModel.crimes.size}")
-    }
+
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -47,13 +45,20 @@ class CrimeListFragment : Fragment() {
         val view = inflater.inflate(R.layout.fragment_crime_list, container, false)
         crimeRecyclerView = view.findViewById(R.id.crime_recycler_view) as RecyclerView
         crimeRecyclerView.layoutManager = LinearLayoutManager(context)
-        updateUI()
+        crimeRecyclerView.adapter = adapter
+
         return view
 
     }
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        val observer = Observer<List<Crime>>{ crimes -> updateUI(crimes) }
+        crimeListViewModel.crimeListLiveData.observe(
+            viewLifecycleOwner, observer)
+    }
 
-    private fun updateUI() {
-        val crimes = crimeListViewModel.crimes
+    private fun updateUI(crimes: List<Crime>) {
+//        crimes+= Crime(UUID.randomUUID(),"ef", Date(),false,false)
         adapter = CrimeAdapter(crimes)
         crimeRecyclerView.adapter = adapter
     }
@@ -110,6 +115,7 @@ class CrimeListFragment : Fragment() {
         override fun getItemCount() = crimes.size
 
 
+        @RequiresApi(Build.VERSION_CODES.O)
         override fun onBindViewHolder(holder: CrimeHolder, position: Int) {
             val crime = crimes[position]
             holder.bind(crime)
