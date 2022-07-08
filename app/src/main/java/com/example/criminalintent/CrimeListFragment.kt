@@ -1,19 +1,24 @@
 package com.example.criminalintent
 
+import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.core.view.isVisible
+import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.criminalintent.databinding.FragmentCrimeListBinding
+import kotlinx.android.synthetic.main.list_item_crime_policy.*
+
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -24,6 +29,11 @@ private const val TYPE_ITEM_WITH_POLICE_BUTTON = 1
 
 
 class CrimeListFragment : Fragment() {
+
+    interface Callbacks {
+        fun onCrimeSelected(crimeId: UUID)
+    }
+    private var callbacks: Callbacks? = null
     private var adapter: CrimeAdapter? = CrimeAdapter(emptyList())
     private lateinit var crimeRecyclerView: RecyclerView
     @RequiresApi(Build.VERSION_CODES.O)
@@ -36,6 +46,20 @@ class CrimeListFragment : Fragment() {
 
     }
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setHasOptionsMenu(true)
+    }
+
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        callbacks = context as Callbacks?
+    }
+    override fun onDetach() {
+        super.onDetach()
+        callbacks = null
+    }
+
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -46,7 +70,6 @@ class CrimeListFragment : Fragment() {
         crimeRecyclerView = view.findViewById(R.id.crime_recycler_view) as RecyclerView
         crimeRecyclerView.layoutManager = LinearLayoutManager(context)
         crimeRecyclerView.adapter = adapter
-
         return view
 
     }
@@ -57,8 +80,7 @@ class CrimeListFragment : Fragment() {
             viewLifecycleOwner, observer)
     }
 
-    private fun updateUI(crimes: List<Crime>) {
-//        crimes+= Crime(UUID.randomUUID(),"ef", Date(),false,false)
+    private fun updateUI(crimes : List<Crime>) {
         adapter = CrimeAdapter(crimes)
         crimeRecyclerView.adapter = adapter
     }
@@ -79,37 +101,29 @@ class CrimeListFragment : Fragment() {
 
         val titleTextView: TextView = itemView.findViewById(R.id.crime_title)
         val dateTextView: TextView = itemView.findViewById(R.id.crime_date)
+        val solvedView : ImageView = itemView.findViewById(R.id.naruch)
 
         @RequiresApi(Build.VERSION_CODES.O)
         fun bind (crime : Crime){
             this.crime = crime
-            titleTextView.text = this.crime.title.toString()
-            dateTextView.text = formatter.format(this.crime.date).toString()
+            titleTextView.text = this.crime.title
+            dateTextView.text = formatter.format(this.crime.date)
+            solvedView.visibility = if (crime.isSolved) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
         }
 
         override fun onClick(v: View) {
-            Toast.makeText(context, "${crime.title} pressed!"
-                , Toast.LENGTH_SHORT)
-                .show()
+            callbacks?.onCrimeSelected(crime.id)
         }
     }
     private inner class CrimeAdapter(var crimes : List<Crime>) : RecyclerView.Adapter<CrimeHolder>(){
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CrimeHolder {
-            var view : View
-            if (viewType == TYPE_ITEM_WITHOUT_POLICE_BUTTON) {
-                view = layoutInflater.inflate(R.layout.list_item_crime, parent, false)
-                return CrimeHolder(view)
-            }
-            else {
-                view = layoutInflater.inflate(R.layout.list_item_crime_policy, parent, false)
-                return CrimeHolder(view)
-                }
-        }
-
-        override fun getItemViewType(position: Int): Int {
-            return if (crimes[position].requiresPolice) TYPE_ITEM_WITH_POLICE_BUTTON
-            else TYPE_ITEM_WITHOUT_POLICE_BUTTON
+            val view = layoutInflater.inflate(R.layout.list_item_crime_policy, parent, false)
+            return CrimeHolder(view)
         }
 
         override fun getItemCount() = crimes.size
@@ -121,5 +135,21 @@ class CrimeListFragment : Fragment() {
             holder.bind(crime)
         }
 
+    }
+    override fun onCreateOptionsMenu(menu:Menu, inflater: MenuInflater) {
+        super.onCreateOptionsMenu(menu, inflater)
+        inflater.inflate(R.menu.fragment_crime_list,menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId){ R.id.new_crime ->
+        {
+            val crime = Crime()
+            crimeListViewModel.addCrime(crime)
+            callbacks?.onCrimeSelected(crime.id)
+            true}
+            else -> return super.onOptionsItemSelected(item)
+
+        }
     }
 }

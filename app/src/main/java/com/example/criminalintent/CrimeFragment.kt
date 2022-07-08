@@ -9,19 +9,34 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
-import androidx.core.text.isDigitsOnly
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProviders
+import java.text.SimpleDateFormat
+import java.util.*
 
-class CrimeFragment : Fragment() {
+private const val ARG_CRIME_ID = "crime_id"
+private const val TAG = "CrimeFragment"
+private const val DIALOG_DATE = "DialogDate"
+private const val REQUEST_DATE = 0
+
+class CrimeFragment : Fragment() , DatePickerFragment.Callbacks{
     private lateinit var titleField: EditText
     private lateinit var dateButton: Button
     private lateinit var crime: Crime
     private lateinit var solvedCheckBox: CheckBox
-
+    private val crimeDetailViewModel: CrimeDetailViewModel by lazy {
+        ViewModelProviders.of(this).get(CrimeDetailViewModel ::class.java)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         crime = Crime()
+        val crimeId = arguments?.getSerializable(ARG_CRIME_ID) as UUID
+       crimeDetailViewModel.loadCrime(crimeId)
+    }
+    override fun onDateSelected(date: Date) {
+        crime.date = date
+        updateUI()
     }
 
     override fun onCreateView(
@@ -32,15 +47,19 @@ class CrimeFragment : Fragment() {
         val view = layoutInflater.inflate(R.layout.fragment_crime, container, false)
         dateButton = view.findViewById(R.id.crime_date) as Button
         titleField = view.findViewById(R.id.crime_title) as EditText
-        solvedCheckBox = view.findViewById(R.id.crime_solved) as
-                    CheckBox
-        dateButton.apply{
-            text = crime.date.toString()
-            isEnabled = false
-        }
+        solvedCheckBox = view.findViewById(R.id.crime_solved) as CheckBox
+
         return view
     }
-
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        crimeDetailViewModel.crimeLiveData.observe(
+            viewLifecycleOwner, androidx.lifecycle.Observer { crime -> crime?.let {
+                    this.crime = crime
+                    updateUI()
+                }
+            })
+    }
     override fun onStart() {
         super.onStart()
         val titleWatcher = object : TextWatcher {
@@ -61,6 +80,7 @@ class CrimeFragment : Fragment() {
             ) {
                 crime.title =
                     sequence.toString()
+
             }
 
             override fun afterTextChanged(sequence: Editable?) {
@@ -68,9 +88,43 @@ class CrimeFragment : Fragment() {
         }
         titleField.addTextChangedListener(titleWatcher)
         solvedCheckBox.apply {
-            setOnCheckedChangeListener { _, isChecked ->
-                crime.isSolved = isChecked
+            isChecked = crime.isSolved
+            jumpDrawablesToCurrentState()
+        }
+        dateButton.text = "Crime date"
+        dateButton.setOnClickListener {
+            DatePickerFragment.newInstance(crime.date).apply {
+                setTargetFragment(this@CrimeFragment, REQUEST_DATE)
+                show(this@CrimeFragment.requireFragmentManager(), DIALOG_DATE)
             }
         }
+        solvedCheckBox.setOnCheckedChangeListener {
+                _, isChecked ->
+            crime.isSolved = isChecked
+        }
+    }
+    private fun updateUI() {
+        var formatter = SimpleDateFormat("EEEE, MMMM dd, yyyy")
+        titleField.setText(crime.title)
+        dateButton.text = formatter.format(crime.date)
+
+        solvedCheckBox.apply {
+            isChecked = crime.isSolved
+            jumpDrawablesToCurrentState() }
+        }
+    companion object {
+        fun newInstance(crimeId: UUID):
+                CrimeFragment {
+            val args = Bundle().apply {
+                putSerializable(ARG_CRIME_ID, crimeId)
+            }
+            return CrimeFragment().apply {
+                arguments = args
+            }
+        }
+    }
+    override fun onStop() {
+        super.onStop()
+        crimeDetailViewModel.saveCrime(crime)
     }
 }
