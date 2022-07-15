@@ -8,6 +8,7 @@ import android.view.*
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.ViewSwitcher
 import androidx.annotation.RequiresApi
 import androidx.core.view.isVisible
 import androidx.databinding.DataBindingUtil
@@ -17,6 +18,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.criminalintent.databinding.FragmentCrimeListBinding
+import kotlinx.android.synthetic.main.fragment_crime_list.*
 import kotlinx.android.synthetic.main.list_item_crime_policy.*
 
 import java.text.SimpleDateFormat
@@ -33,6 +35,8 @@ class CrimeListFragment : Fragment() {
     interface Callbacks {
         fun onCrimeSelected(crimeId: UUID)
     }
+    lateinit var crimeList: List<Crime>
+    var ch = true
     private var callbacks: Callbacks? = null
     private var adapter: CrimeAdapter? = CrimeAdapter(emptyList())
     private lateinit var crimeRecyclerView: RecyclerView
@@ -75,14 +79,29 @@ class CrimeListFragment : Fragment() {
     }
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val observer = Observer<List<Crime>>{ crimes -> updateUI(crimes) }
-        crimeListViewModel.crimeListLiveData.observe(
-            viewLifecycleOwner, observer)
+        val observer = Observer<List<Crime>>{ crimes -> setCrimes(crimes) }
+        crimeListViewModel.crimeListLiveData.observe(viewLifecycleOwner, observer)
     }
 
-    private fun updateUI(crimes : List<Crime>) {
-        adapter = CrimeAdapter(crimes)
+    private fun setCrimes(crimes: List<Crime>){
+        crimeList = crimes
+        Log.d("TAG","setCrimes called")
+        if (crimeList.isEmpty() && ch) {
+            ch = false
+            switcher.showNext()
+        }
+        updateUI()
+
+    }
+
+    private fun updateUI() {
+        Log.d("TAG","updateUI called")
+        adapter = CrimeAdapter(crimeList)
         crimeRecyclerView.adapter = adapter
+//        if (crimeList.isNotEmpty() && ch)
+//            Log.d("CRIMES", "${crimeList.size}")
+//        ch = false
+//        switcher.showNext()
     }
 
     companion object {
