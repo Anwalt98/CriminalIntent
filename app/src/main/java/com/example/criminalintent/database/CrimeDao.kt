@@ -14,6 +14,8 @@ interface CrimeDao {
     fun getCrimes(): LiveData<List<Crime>>
     @Query("SELECT * FROM crime WHERE id=(:id)")
     fun getCrime(id: UUID): LiveData<Crime?>
+    @Query("DELETE FROM crime WHERE id= :id")
+    fun deleteById(id: UUID)
     @Update
     fun updateCrime(crime: Crime)
     @Insert
